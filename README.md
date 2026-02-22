@@ -1,2 +1,2 @@
 # votifast
-Fast track, album and playlist scraping off of Spotify
+This project based off of [votify](https://github.com/glomatico/votify), and is a stripped off version thereof, focusing on fast concurrent downloads and staying up to date with Spotify's API changes. The primary and persistent problem of that project was its highly convoluted, non-idiomatic codebase, and code rot. By reducing the scope of the problem, and isolating functionalities to specific parts of the program, it's hoped that it would be more robust and comprehensible to work with in future.
