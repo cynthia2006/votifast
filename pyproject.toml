@@ -1,0 +1,17 @@
+[build-system]
+requires = ["flit_core >=3.11,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "votifast"
+descriptor = "Fast track, album and playlist scraping off Spotify"
+version = "0.1.0"
+authors = [{name = "cynthia2006", email = "cynthia2048@proton.me"}]
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+dependencies = [
+    "pywidevine",
+    "httpx[http2]",
+    "click",
+    "aiofiles",
+]
