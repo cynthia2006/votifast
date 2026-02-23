@@ -1,6 +1,8 @@
 import asyncio
 import time
 import os
+from functools import cached_property
+
 import httpx
 
 from typing import Dict, Collection
@@ -75,9 +77,9 @@ class SpotifyApi:
         response.raise_for_status()
         self.user_profile = response.json()
 
-    @property
+    @cached_property
     def is_premium(self):
-        return self.user_profile['data']['account']['product'] == 'PREMIUM'
+        return self.user_profile['data']['me']['account']['product'] == 'PREMIUM'
 
     @classmethod
     def with_cookies(
@@ -165,26 +167,22 @@ class SpotifyApi:
 
     async def get_widevine_key(self, file_id: str) -> Key:
         """Fetch the AES-128 key for decrypting (using Widevine)."""
-        session_id: bytes
+        await self._refresh_session_auth()
 
         response = await self.client.get(self.SEEK_TABLE_API_URL.format(file_id=file_id))
         response.raise_for_status()
         pssh = PSSH(response.json()['pssh'])
 
-        def get_challenge():
-            nonlocal session_id; session_id = self.cdm.open()
-            return self.cdm.get_license_challenge(session_id, pssh)
+        session_id = self.cdm.open()
+        challenge = self.cdm.get_license_challenge(session_id, pssh)
 
-        challenge = await asyncio.to_thread(get_challenge)
+        await self._refresh_session_auth()
 
         response = await self.client.post(self.WIDEVINE_LICENSE_API_URL, content=challenge)
         response.raise_for_status()
 
-        def get_key():
-            self.cdm.parse_license(session_id, license_message=response.content)
-            return next(filter(lambda key: key.type == 'CONTENT', self.cdm.get_keys(session_id)), None)
-
-        return await asyncio.to_thread(get_key)
+        self.cdm.parse_license(session_id, license_message=response.content)
+        return next(filter(lambda key: key.type == 'CONTENT', self.cdm.get_keys(session_id)), None)
 
     async def _get_stream_urls(self, file_id: str) -> str:
         await self._refresh_session_auth()
@@ -245,13 +243,14 @@ class SpotifyApi:
             'variables': {
                 'uri': f'spotify:album:{album_id}',
                 'offset': 0,
+                'locale': '',
                 'limit': 5000
             },
             'operationName': 'getAlbum',
             'extensions': {
                 'persistedQuery': {
                     'version': 1,
-                    'sha256Hash': '7982b11e21535cd2594badc40030b745671b61a1fa66766e569d45e6364f3422'
+                    'sha256Hash': 'b9bfabef66ed756e5e13f68a942deb60bd4125ec1f1be8cc42769dc0259b4b10'
                 }
             }
         })
@@ -276,7 +275,7 @@ class SpotifyApi:
                      date=datetime.fromisoformat(album['date']['isoString']),
                      covers=[CoverArt(httpx.URL(image['url']), image['width'], image['height'])
                              for image in album['coverArt']['sources']],
-                     items=tracks,
+                     tracks=tracks,
                      label=album['label'],
                      discs=album['discs']['totalCount'])
 

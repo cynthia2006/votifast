@@ -2,7 +2,7 @@ import httpx
 
 from dataclasses import dataclass, field, InitVar
 from datetime import datetime
-from functools import cached_property
+from functools import cached_property, lru_cache
 from enum import Enum
 from typing import Collection
 
@@ -32,11 +32,11 @@ class Track(TrackStub):
     def hq_cover(self) -> CoverArt:
         return max(self.covers)
 
-    @cached_property
-    def hq_free_source(self) -> TrackSource:
-        return max(filter(lambda src: src.format == TrackSourceFormat.FREE,
-                          self.sources),
-                   key=lambda src: src.bitrate)
+    # @lru_cache
+    def hq_source(self, premium=False) -> TrackSource:
+        return max(
+            filter(lambda src: premium or src.format == TrackSourceFormat.FREE, self.sources),
+        key=lambda src: src.bitrate)
 
 @dataclass(frozen=True)
 class TrackSource:
@@ -64,7 +64,7 @@ class Album:
     artists: Collection[str]
     date: datetime
     covers: Collection[CoverArt]
-    items: Collection[AlbumTrack]
+    tracks: Collection[AlbumTrack]
     label: str
     discs: int
 

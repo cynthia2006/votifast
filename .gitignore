@@ -208,4 +208,5 @@ __marimo__/
 
 # Cookies
 cookies.txt
+secrets.json
 .idea/
